@@ -12,3 +12,8 @@ venv/
 .mypy_cache/
 *.so
 .DS_Store
+CLAUDE.md
+.claude/
+.claude-flow/
+.mcp.json
+.swarm/
