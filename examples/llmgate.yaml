@@ -1,0 +1,67 @@
+active_profile: smart
+
+defaults:
+  temperature: 0.7
+  max_tokens: 1024
+
+profiles:
+  smart:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    api_key: ${ANTHROPIC_API_KEY}
+
+  fast:
+    provider: groq
+    model: llama-3.1-8b-instant
+    api_key: ${GROQ_API_KEY}
+
+  cheap:
+    provider: deepseek
+    model: deepseek-chat
+    api_key: ${DEEPSEEK_API_KEY}
+
+  local:
+    provider: ollama
+    model: llama3.2
+    base_url: http://localhost:11434
+
+  local_lmstudio:
+    provider: lmstudio
+    model: mistral-7b-instruct
+
+  azure:
+    provider: azure_openai
+    model: gpt-4o
+    resource_name: my-azure-resource
+    deployment_name: my-gpt4o-deployment
+    api_version: "2024-02-01"
+    api_key: ${AZURE_OPENAI_API_KEY}
+
+  aws:
+    provider: bedrock
+    model: amazon.titan-text-express-v1
+    region: us-east-1
+
+  gcp:
+    provider: vertexai
+    model: gemini-1.5-pro
+    project_id: my-gcp-project
+    region: us-central1
+    service_account_json: ${GOOGLE_APPLICATION_CREDENTIALS}
+
+  router:
+    provider: openrouter
+    model: meta-llama/llama-3.1-70b-instruct
+    api_key: ${OPENROUTER_API_KEY}
+    site_url: https://myapp.com
+
+  hf:
+    provider: huggingface
+    model: mistralai/Mixtral-8x7B-Instruct-v0.1
+    api_key: ${HUGGINGFACE_API_KEY}
+
+  replicate_run:
+    provider: replicate
+    model: meta/llama-2-70b-chat
+    api_key: ${REPLICATE_API_KEY}
+    version: "02e509c789964a7ea8736978a43525956ef40397be9033abf9fd2badfe68c9e3"
