@@ -1,9 +1,13 @@
 # llmgate
 
-[![PyPI version](https://img.shields.io/pypi/v/llmgate.svg)](https://pypi.org/project/llmgate/)
-[![Python](https://img.shields.io/pypi/pyversions/llmgate.svg)](https://pypi.org/project/llmgate/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![GitHub stars](https://img.shields.io/github/stars/kesiee/llmgate.svg)](https://github.com/kesiee/llmgate/stargazers)
+
+<!-- Uncomment after publishing to PyPI:
+[![PyPI version](https://img.shields.io/pypi/v/llmgate.svg)](https://pypi.org/project/llmgate/)
+[![Downloads](https://img.shields.io/pypi/dm/llmgate.svg)](https://pypi.org/project/llmgate/)
+-->
 
 Plug-and-play LLM connector via YAML config. One interface, 21 providers, zero bloat.
 
@@ -15,9 +19,9 @@ You've probably seen [LiteLLM](https://github.com/BerriAI/litellm). It's great �
 
 | | llmgate | LiteLLM |
 |---|---|---|
+| Install size | ~2 MB | ~200 MB+ |
 | Dependencies | 2 (`httpx`, `pyyaml`) | 50+ |
 | Architecture | Library (import it) | Proxy server |
-| Config | YAML file | Code + env vars |
 | Provider swap | Change 1 line in YAML | Change code |
 | Latency overhead | ~0 (direct HTTP) | Proxy hop + DB logging |
 
@@ -61,9 +65,9 @@ for chunk in gate.stream("Write a haiku"):
     print(chunk, end="", flush=True)
 ```
 
-## System Prompts
+## System Prompts & Multi-Turn
 
-Pass a system prompt using `chat_messages()` with the full messages list:
+For simple prompts use `chat()`. For system prompts or conversation history, use `chat_messages()` with the full messages list:
 
 ```python
 response = gate.chat_messages([
@@ -297,6 +301,10 @@ response.tokens_used    # int | None — total tokens
 response.finish_reason  # str | None — stop reason
 response.raw            # dict — full API response
 ```
+
+## Async Support
+
+Not yet — llmgate v0.1 is sync-only (`httpx` sync client). Async via `httpx.AsyncClient` is planned for v0.2. If this is blocking you, open an issue.
 
 ## Contributing
 
