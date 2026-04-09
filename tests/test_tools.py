@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 from unittest.mock import MagicMock
 
 import httpx
 import pytest
+
+_has_pydantic = importlib.util.find_spec("pydantic") is not None
 
 from llmgate.response import LLMResponse, ToolCall
 
@@ -194,6 +197,7 @@ class TestGeminiToolCalling:
         assert result.tool_calls[0].arguments == {"city": "Paris"}
 
 
+@pytest.mark.skipif(not _has_pydantic, reason="pydantic not installed")
 class TestStructuredOutput:
     def test_structured_output_via_gate(self, tmp_path):
         from llmgate.gate import LLMGate, _apply_structured_output
