@@ -5,7 +5,25 @@ description = "Plug-and-play LLM connector via YAML config"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
+authors = [{name = "kesiee"}]
+keywords = ["llm", "ai", "openai", "anthropic", "gemini", "gateway", "yaml", "config"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = ["httpx>=0.27", "pyyaml>=6.0"]
+
+[project.urls]
+Homepage = "https://github.com/kesiee/llmgate"
+Repository = "https://github.com/kesiee/llmgate"
+Issues = "https://github.com/kesiee/llmgate/issues"
 
 [project.optional-dependencies]
 aws = ["boto3>=1.34"]
