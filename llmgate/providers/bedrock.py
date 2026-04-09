@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Generator
+from typing import Any, AsyncGenerator, Generator
 
 from llmgate.providers.base import BaseProvider
 from llmgate.response import LLMResponse
@@ -113,7 +113,16 @@ class BedrockProvider(BaseProvider):
             raw=data,
         )
 
+    async def asend(self, messages: list[dict], **kwargs: Any) -> LLMResponse:
+        # boto3 does not have native async support; delegate to sync
+        return self.send(messages, **kwargs)
+
     def stream(self, messages: list[dict], **kwargs: Any) -> Generator[str, None, None]:
         # Streaming not trivially supported via invoke_model; return full response
         result = self.send(messages, **kwargs)
+        yield result.text
+
+    async def astream(self, messages: list[dict], **kwargs: Any) -> AsyncGenerator[str, None]:
+        # boto3 does not have native async support; delegate to sync
+        result = await self.asend(messages, **kwargs)
         yield result.text

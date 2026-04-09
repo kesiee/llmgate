@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
-from typing import Any, Generator
+from typing import Any, AsyncGenerator, Generator
 
 import httpx
 
 from llmgate.providers.base import BaseProvider
+from llmgate.providers.openai import _raise_for_status
 from llmgate.response import LLMResponse
 
 
@@ -24,9 +26,8 @@ class ReplicateProvider(BaseProvider):
             "Content-Type": "application/json",
         }
 
-    def send(self, messages: list[dict], **kwargs: Any) -> LLMResponse:
+    def _build_input(self, messages: list[dict], **kwargs: Any) -> dict[str, Any]:
         prompt = messages[-1]["content"] if messages else ""
-        version = self.config.get("version", "")
         input_data: dict[str, Any] = {"prompt": prompt}
         max_tokens = kwargs.get("max_tokens", self.config.get("max_tokens"))
         if max_tokens:
@@ -34,6 +35,11 @@ class ReplicateProvider(BaseProvider):
         temp = kwargs.get("temperature", self.config.get("temperature"))
         if temp is not None:
             input_data["temperature"] = temp
+        return input_data
+
+    def send(self, messages: list[dict], **kwargs: Any) -> LLMResponse:
+        version = self.config.get("version", "")
+        input_data = self._build_input(messages, **kwargs)
 
         headers = self._get_headers()
         with httpx.Client(timeout=60) as client:
@@ -43,14 +49,14 @@ class ReplicateProvider(BaseProvider):
                 headers=headers,
                 json={"version": version, "input": input_data},
             )
-            resp.raise_for_status()
+            _raise_for_status(resp, self.provider_name)
             prediction = resp.json()
             prediction_id = prediction["id"]
 
             # Poll until complete
             for _ in range(120):
                 poll = client.get(f"{self.BASE_URL}/predictions/{prediction_id}", headers=headers)
-                poll.raise_for_status()
+                _raise_for_status(poll, self.provider_name)
                 data = poll.json()
                 status = data["status"]
                 if status == "succeeded":
@@ -70,7 +76,51 @@ class ReplicateProvider(BaseProvider):
 
             raise TimeoutError("Replicate prediction timed out after 120 seconds")
 
+    async def asend(self, messages: list[dict], **kwargs: Any) -> LLMResponse:
+        version = self.config.get("version", "")
+        input_data = self._build_input(messages, **kwargs)
+
+        headers = self._get_headers()
+        async with httpx.AsyncClient(timeout=60) as client:
+            # Create prediction
+            resp = await client.post(
+                f"{self.BASE_URL}/predictions",
+                headers=headers,
+                json={"version": version, "input": input_data},
+            )
+            _raise_for_status(resp, self.provider_name)
+            prediction = resp.json()
+            prediction_id = prediction["id"]
+
+            # Poll until complete
+            for _ in range(120):
+                poll = await client.get(f"{self.BASE_URL}/predictions/{prediction_id}", headers=headers)
+                _raise_for_status(poll, self.provider_name)
+                data = poll.json()
+                status = data["status"]
+                if status == "succeeded":
+                    output = data["output"]
+                    text = "".join(output) if isinstance(output, list) else str(output)
+                    return LLMResponse(
+                        text=text,
+                        model=self.config["model"],
+                        provider=self.provider_name,
+                        tokens_used=data.get("metrics", {}).get("predict_time"),
+                        finish_reason="stop",
+                        raw=data,
+                    )
+                if status == "failed":
+                    raise RuntimeError(f"Replicate prediction failed: {data.get('error', 'unknown error')}")
+                await asyncio.sleep(1)
+
+            raise TimeoutError("Replicate prediction timed out after 120 seconds")
+
     def stream(self, messages: list[dict], **kwargs: Any) -> Generator[str, None, None]:
         # Streaming not supported via polling; return full response
         result = self.send(messages, **kwargs)
+        yield result.text
+
+    async def astream(self, messages: list[dict], **kwargs: Any) -> AsyncGenerator[str, None]:
+        # Streaming not supported via polling; return full response
+        result = await self.asend(messages, **kwargs)
         yield result.text

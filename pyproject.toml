@@ -1,6 +1,6 @@
 [project]
 name = "llmgt"
-version = "0.1.0"
+version = "0.2.0"
 description = "Plug-and-play LLM connector via YAML config"
 readme = "README.md"
 license = {text = "MIT"}

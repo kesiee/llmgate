@@ -139,7 +139,7 @@ class TestAnthropicProvider:
 
     def test_send(self, provider, monkeypatch):
         data = {
-            "content": [{"text": "hi there"}],
+            "content": [{"type": "text", "text": "hi there"}],
             "model": "claude-sonnet-4-20250514",
             "stop_reason": "end_turn",
             "usage": {"input_tokens": 10, "output_tokens": 5},
@@ -152,7 +152,7 @@ class TestAnthropicProvider:
 
     def test_system_message_extracted(self, provider, monkeypatch):
         data = {
-            "content": [{"text": "ok"}],
+            "content": [{"type": "text", "text": "ok"}],
             "model": "claude-sonnet-4-20250514",
             "usage": {"input_tokens": 5, "output_tokens": 2},
         }

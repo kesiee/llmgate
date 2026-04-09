@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generator
+from typing import Any, AsyncGenerator, Generator
+
+from llmgate.exceptions import EmbeddingsNotSupported
 
 
 class BaseProvider(ABC):
@@ -21,3 +23,17 @@ class BaseProvider(ABC):
     @abstractmethod
     def stream(self, messages: list[dict], **kwargs: Any) -> Generator[str, None, None]:
         ...
+
+    @abstractmethod
+    async def asend(self, messages: list[dict], **kwargs: Any) -> Any:
+        ...
+
+    @abstractmethod
+    async def astream(self, messages: list[dict], **kwargs: Any) -> AsyncGenerator[str, None]:
+        ...
+
+    def embed(self, input: str | list[str], **kwargs: Any) -> Any:
+        raise EmbeddingsNotSupported(self.provider_name)
+
+    async def aembed(self, input: str | list[str], **kwargs: Any) -> Any:
+        raise EmbeddingsNotSupported(self.provider_name)

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Generator
+from typing import Any, AsyncGenerator, Generator
 
 import httpx
 
 from llmgate.providers.base import BaseProvider
+from llmgate.providers.openai import _raise_for_status
 from llmgate.response import LLMResponse
 
 
@@ -65,7 +66,25 @@ class VertexAIProvider(BaseProvider):
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         with httpx.Client(timeout=60) as client:
             resp = client.post(self._get_url(), headers=headers, json=self._build_payload(messages, **kwargs))
-            resp.raise_for_status()
+            _raise_for_status(resp, self.provider_name)
+            data = resp.json()
+        candidate = data["candidates"][0]
+        usage = data.get("usageMetadata", {})
+        return LLMResponse(
+            text=candidate["content"]["parts"][0]["text"],
+            model=self.config["model"],
+            provider=self.provider_name,
+            tokens_used=(usage.get("promptTokenCount", 0) + usage.get("candidatesTokenCount", 0)) or None,
+            finish_reason=candidate.get("finishReason"),
+            raw=data,
+        )
+
+    async def asend(self, messages: list[dict], **kwargs: Any) -> LLMResponse:
+        token = self._get_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(self._get_url(), headers=headers, json=self._build_payload(messages, **kwargs))
+            _raise_for_status(resp, self.provider_name)
             data = resp.json()
         candidate = data["candidates"][0]
         usage = data.get("usageMetadata", {})
@@ -84,8 +103,24 @@ class VertexAIProvider(BaseProvider):
         url = self._get_url(stream=True) + "?alt=sse"
         with httpx.Client(timeout=60) as client:
             with client.stream("POST", url, headers=headers, json=self._build_payload(messages, **kwargs)) as resp:
-                resp.raise_for_status()
+                _raise_for_status(resp, self.provider_name)
                 for line in resp.iter_lines():
+                    if line.startswith("data: "):
+                        chunk = json.loads(line[6:])
+                        candidates = chunk.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts and "text" in parts[0]:
+                                yield parts[0]["text"]
+
+    async def astream(self, messages: list[dict], **kwargs: Any) -> AsyncGenerator[str, None]:
+        token = self._get_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        url = self._get_url(stream=True) + "?alt=sse"
+        async with httpx.AsyncClient(timeout=60) as client:
+            async with client.stream("POST", url, headers=headers, json=self._build_payload(messages, **kwargs)) as resp:
+                _raise_for_status(resp, self.provider_name)
+                async for line in resp.aiter_lines():
                     if line.startswith("data: "):
                         chunk = json.loads(line[6:])
                         candidates = chunk.get("candidates", [])
