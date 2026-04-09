@@ -1,11 +1,12 @@
 # llmgate
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
-[![GitHub stars](https://img.shields.io/github/stars/kesiee/llmgate.svg)](https://github.com/kesiee/llmgate/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?v=2)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg?v=2)](https://www.python.org/downloads/)
+[![GitHub stars](https://img.shields.io/github/stars/kesiee/llmgate.svg?v=2)](https://github.com/kesiee/llmgate/stargazers)
+[![Tests](https://github.com/kesiee/llmgate/actions/workflows/tests.yml/badge.svg)](https://github.com/kesiee/llmgate/actions/workflows/tests.yml)
 
 [![PyPI version](https://img.shields.io/pypi/v/llmgt.svg?v=2)](https://pypi.org/project/llmgt/)
-[![Downloads](https://img.shields.io/pypi/dm/llmgt.svg)](https://pypi.org/project/llmgt/)
+[![Downloads](https://img.shields.io/pypi/dm/llmgt.svg?v=2)](https://pypi.org/project/llmgt/)
 
 Plug-and-play LLM connector via YAML config. One interface, 21 providers, zero bloat.
 
