@@ -4,10 +4,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![GitHub stars](https://img.shields.io/github/stars/kesiee/llmgate.svg)](https://github.com/kesiee/llmgate/stargazers)
 
-<!-- Uncomment after publishing to PyPI:
-[![PyPI version](https://img.shields.io/pypi/v/llmgate.svg)](https://pypi.org/project/llmgate/)
-[![Downloads](https://img.shields.io/pypi/dm/llmgate.svg)](https://pypi.org/project/llmgate/)
--->
+[![PyPI version](https://img.shields.io/pypi/v/llmgt.svg)](https://pypi.org/project/llmgt/)
+[![Downloads](https://img.shields.io/pypi/dm/llmgt.svg)](https://pypi.org/project/llmgt/)
 
 Plug-and-play LLM connector via YAML config. One interface, 21 providers, zero bloat.
 
@@ -15,7 +13,7 @@ Plug-and-play LLM connector via YAML config. One interface, 21 providers, zero b
 
 You've probably seen [LiteLLM](https://github.com/BerriAI/litellm). It's great — if you want a proxy server, Redis, PostgreSQL, a dashboard, and 50+ transitive dependencies. If you just want to call an LLM from Python without installing a framework, there's nothing lightweight out there.
 
-**llmgate** is the opposite: `pip install llmgate` pulls in exactly two dependencies (`httpx` + `pyyaml`). Drop a YAML file in your project, set your API key, and call any model. No proxy server, no database, no SDK lock-in — just a Python library that reads a config and makes HTTP calls. Swap providers by changing one line in your YAML.
+**llmgate** is the opposite: `pip install llmgt` pulls in exactly two dependencies (`httpx` + `pyyaml`). Drop a YAML file in your project, set your API key, and call any model. No proxy server, no database, no SDK lock-in — just a Python library that reads a config and makes HTTP calls. Swap providers by changing one line in your YAML.
 
 | | llmgate | LiteLLM |
 |---|---|---|
@@ -25,17 +23,19 @@ You've probably seen [LiteLLM](https://github.com/BerriAI/litellm). It's great �
 | Provider swap | Change 1 line in YAML | Change code |
 | Latency overhead | ~0 (direct HTTP) | Proxy hop + DB logging |
 
+> **Note:** The PyPI package is `llmgt` (`pip install llmgt`), but the import is `llmgate`.
+
 ## Install
 
 ```bash
-pip install llmgate
+pip install llmgt
 ```
 
 Optional extras:
 ```bash
-pip install llmgate[aws]    # AWS Bedrock (boto3)
-pip install llmgate[gcp]    # Google Vertex AI (google-auth)
-pip install llmgate[dev]    # pytest + dev tools
+pip install llmgt[aws]    # AWS Bedrock (boto3)
+pip install llmgt[gcp]    # Google Vertex AI (google-auth)
+pip install llmgt[dev]    # pytest + dev tools
 ```
 
 ## Quickstart
@@ -260,7 +260,7 @@ profiles:
 ## AWS Bedrock Setup
 
 ```bash
-pip install llmgate[aws]
+pip install llmgt[aws]
 ```
 
 ```yaml
@@ -276,7 +276,7 @@ Requires AWS credentials configured via `~/.aws/credentials`, env vars, or IAM r
 ## Google Vertex AI Setup
 
 ```bash
-pip install llmgate[gcp]
+pip install llmgt[gcp]
 ```
 
 ```yaml
