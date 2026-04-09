@@ -28,7 +28,7 @@ Issues = "https://github.com/kesiee/llmgate/issues"
 [project.optional-dependencies]
 aws = ["boto3>=1.34"]
 gcp = ["google-auth>=2.0"]
-dev = ["pytest", "pytest-mock", "python-dotenv"]
+dev = ["pytest", "pytest-mock", "python-dotenv", "anyio[trio]"]
 
 [build-system]
 requires = ["hatchling"]
