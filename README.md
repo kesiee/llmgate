@@ -65,6 +65,34 @@ for chunk in gate.stream("Write a haiku"):
     print(chunk, end="", flush=True)
 ```
 
+## Async Support
+
+Every method has an async counterpart powered by `httpx.AsyncClient`:
+
+```python
+import asyncio
+from llmgate import LLMGate
+
+async def main():
+    gate = LLMGate()
+
+    # Async chat
+    response = await gate.achat("Hello!")
+    print(response.text)
+
+    # Async streaming
+    async for chunk in gate.astream("Write a haiku"):
+        print(chunk, end="", flush=True)
+
+    # Async with full message list
+    response = await gate.achat_messages([
+        {"role": "system", "content": "Be concise."},
+        {"role": "user", "content": "What's a closure?"},
+    ])
+
+asyncio.run(main())
+```
+
 ## System Prompts & Multi-Turn
 
 For simple prompts use `chat()`. For system prompts or conversation history, use `chat_messages()` with the full messages list:
@@ -76,8 +104,6 @@ response = gate.chat_messages([
 ])
 print(response.text)
 ```
-
-## Multi-Turn Conversations
 
 Build up conversation history and pass it in:
 
@@ -103,6 +129,101 @@ Streaming works with full message lists too:
 ```python
 for chunk in gate.stream_messages(messages):
     print(chunk, end="", flush=True)
+```
+
+## Tool / Function Calling
+
+Pass OpenAI-style tool definitions — llmgate automatically converts them to each provider's native format:
+
+```python
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a city",
+        "parameters": {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+        },
+    },
+}]
+
+response = gate.chat("What's the weather in NYC?", tools=tools, tool_choice="auto")
+
+if response.tool_calls:
+    for tc in response.tool_calls:
+        print(f"{tc.function}({tc.arguments})")
+        # get_weather({'city': 'NYC'})
+```
+
+Supported providers: OpenAI, Anthropic, Gemini (and all OpenAI-compatible providers).
+
+## Structured Outputs
+
+Pass a Pydantic model as `response_format` to get a validated, typed object:
+
+```python
+from pydantic import BaseModel
+
+class Movie(BaseModel):
+    title: str
+    year: int
+    rating: float
+
+response = gate.chat(
+    "Name a great sci-fi film. Respond in JSON.",
+    response_format=Movie,
+)
+movie = response.parsed  # Movie(title='Inception', year=2010, rating=8.8)
+```
+
+## Embeddings
+
+Generate embeddings with providers that support them:
+
+```python
+# Single text
+result = gate.embed("Hello world")
+vector = result.embeddings[0]  # list[float]
+
+# Batch
+result = gate.embed(["Hello", "World"])
+vectors = result.embeddings  # list[list[float]]
+
+# With dimensions (OpenAI)
+result = gate.embed("Hello", dimensions=256)
+
+# Async
+result = await gate.aembed("Hello world")
+```
+
+Supported providers: OpenAI (+ compatible), Gemini, Cohere. Others raise `EmbeddingsNotSupported`.
+
+## Middleware
+
+Compose middleware for retry, logging, caching, and rate limiting:
+
+```python
+from llmgate import LLMGate
+from llmgate.middleware import (
+    RetryMiddleware,
+    LoggingMiddleware,
+    CacheMiddleware,
+    RateLimitMiddleware,
+)
+
+gate = LLMGate(middleware=[
+    RetryMiddleware(max_retries=3, backoff_factor=0.5),
+    LoggingMiddleware(level="INFO"),
+    CacheMiddleware(ttl=300),
+    RateLimitMiddleware(rpm=60),
+])
+
+response = gate.chat("Hello")  # retries, logs, caches, rate-limits
+
+# Works with async too
+response = await gate.achat("Hello")
 ```
 
 ## Multi-Profile Config
@@ -147,10 +268,6 @@ response = gate.chat("Hello", temperature=0.2)  # call-time overrides
 
 llmgate resolves `${ENV_VAR}` from `os.environ`. To load keys from a `.env` file, use [python-dotenv](https://pypi.org/project/python-dotenv/):
 
-```bash
-pip install python-dotenv
-```
-
 ```python
 from dotenv import load_dotenv
 load_dotenv()  # loads .env into os.environ
@@ -158,15 +275,6 @@ load_dotenv()  # loads .env into os.environ
 from llmgate import LLMGate
 gate = LLMGate()  # now ${ANTHROPIC_API_KEY} etc. will resolve
 ```
-
-Or use a `.env` file:
-```
-ANTHROPIC_API_KEY=sk-ant-...
-GROQ_API_KEY=gsk_...
-OPENAI_API_KEY=sk-...
-```
-
-See `.env.example` in the repo for all supported variables.
 
 ## Environment Variable Interpolation
 
@@ -184,65 +292,80 @@ Variables are resolved from `os.environ` at load time. Missing vars resolve to e
 
 ## Supported Providers
 
-| Provider | Example Models | Env Var | Streaming | Notes |
-|---|---|---|---|---|
-| `openai` | gpt-4o, gpt-4-turbo | `OPENAI_API_KEY` | ✅ | |
-| `anthropic` | claude-sonnet-4-20250514, claude-opus-4-20250514 | `ANTHROPIC_API_KEY` | ✅ | |
-| `gemini` | gemini-1.5-pro, gemini-1.5-flash | `GEMINI_API_KEY` | ✅ | |
-| `cohere` | command-r-plus, command-r | `COHERE_API_KEY` | ✅ | |
-| `groq` | llama-3.1-8b-instant, mixtral-8x7b | `GROQ_API_KEY` | ✅ | OpenAI-compatible |
-| `mistral` | mistral-large, mistral-small | `MISTRAL_API_KEY` | ✅ | OpenAI-compatible |
-| `openrouter` | meta-llama/llama-3.1-70b-instruct | `OPENROUTER_API_KEY` | ✅ | OpenAI-compatible |
-| `together` | meta-llama/Llama-3-70b-chat-hf | `TOGETHER_API_KEY` | ✅ | OpenAI-compatible |
-| `fireworks` | accounts/fireworks/models/llama-v3-70b | `FIREWORKS_API_KEY` | ✅ | OpenAI-compatible |
-| `perplexity` | llama-3.1-sonar-large-128k | `PERPLEXITY_API_KEY` | ✅ | OpenAI-compatible |
-| `deepseek` | deepseek-chat, deepseek-coder | `DEEPSEEK_API_KEY` | ✅ | OpenAI-compatible |
-| `xai` | grok-2, grok-beta | `XAI_API_KEY` | ✅ | OpenAI-compatible |
-| `ai21` | jamba-1.5-large, jamba-1.5-mini | `AI21_API_KEY` | ✅ | OpenAI-compatible |
-| `azure_openai` | gpt-4o (via deployment) | `AZURE_OPENAI_API_KEY` | ✅ | See [Azure setup](#azure-openai-setup) |
-| `bedrock` | anthropic.claude-3, amazon.titan | AWS credentials | ❌ | See [Bedrock setup](#aws-bedrock-setup) |
-| `vertexai` | gemini-1.5-pro (via Vertex) | GCP ADC | ✅ | See [Vertex setup](#google-vertex-ai-setup) |
-| `huggingface` | mistralai/Mixtral-8x7B-Instruct-v0.1 | `HUGGINGFACE_API_KEY` | ❌ | Auto-detects chat models |
-| `replicate` | meta/llama-2-70b-chat | `REPLICATE_API_KEY` | ❌ | Polling-based |
-| `nlpcloud` | chatdolphin, finetuned-llama-3 | `NLPCLOUD_API_KEY` | ❌ | |
-| `ollama` | llama3.2, mistral, codellama | none | ✅ | Local |
-| `lmstudio` | any GGUF model | none | ✅ | Local, OpenAI-compatible |
+| Provider | Example Models | Env Var | Streaming | Embeddings | Tool Calling |
+|---|---|---|---|---|---|
+| `openai` | gpt-4o, gpt-4-turbo | `OPENAI_API_KEY` | ✅ | ✅ | ✅ |
+| `anthropic` | claude-sonnet-4-20250514, claude-opus-4-20250514 | `ANTHROPIC_API_KEY` | ✅ | ❌ | ✅ |
+| `gemini` | gemini-1.5-pro, gemini-1.5-flash | `GEMINI_API_KEY` | ✅ | ✅ | ✅ |
+| `cohere` | command-r-plus, command-r | `COHERE_API_KEY` | ✅ | ✅ | ❌ |
+| `groq` | llama-3.1-8b-instant, mixtral-8x7b | `GROQ_API_KEY` | ✅ | ✅ | ✅ |
+| `mistral` | mistral-large, mistral-small | `MISTRAL_API_KEY` | ✅ | ✅ | ✅ |
+| `openrouter` | meta-llama/llama-3.1-70b-instruct | `OPENROUTER_API_KEY` | ✅ | ✅ | ✅ |
+| `together` | meta-llama/Llama-3-70b-chat-hf | `TOGETHER_API_KEY` | ✅ | ✅ | ✅ |
+| `fireworks` | accounts/fireworks/models/llama-v3-70b | `FIREWORKS_API_KEY` | ✅ | ✅ | ✅ |
+| `perplexity` | llama-3.1-sonar-large-128k | `PERPLEXITY_API_KEY` | ✅ | ✅ | ✅ |
+| `deepseek` | deepseek-chat, deepseek-coder | `DEEPSEEK_API_KEY` | ✅ | ✅ | ✅ |
+| `xai` | grok-2, grok-beta | `XAI_API_KEY` | ✅ | ✅ | ✅ |
+| `ai21` | jamba-1.5-large, jamba-1.5-mini | `AI21_API_KEY` | ✅ | ✅ | ✅ |
+| `azure_openai` | gpt-4o (via deployment) | `AZURE_OPENAI_API_KEY` | ✅ | ❌ | ✅ |
+| `bedrock` | anthropic.claude-3, amazon.titan | AWS credentials | ❌ | ❌ | ❌ |
+| `vertexai` | gemini-1.5-pro (via Vertex) | GCP ADC | ✅ | ❌ | ❌ |
+| `huggingface` | mistralai/Mixtral-8x7B-Instruct-v0.1 | `HUGGINGFACE_API_KEY` | ❌ | ❌ | ❌ |
+| `replicate` | meta/llama-2-70b-chat | `REPLICATE_API_KEY` | ❌ | ❌ | ❌ |
+| `nlpcloud` | chatdolphin, finetuned-llama-3 | `NLPCLOUD_API_KEY` | ❌ | ❌ | ❌ |
+| `ollama` | llama3.2, mistral, codellama | none | ✅ | ❌ | ❌ |
+| `lmstudio` | any GGUF model | none | ✅ | ✅ | ✅ |
 
-Providers marked ❌ for streaming will return the full response as a single chunk when you call `stream()`.
+Providers marked ❌ for streaming return the full response as a single chunk. OpenAI-compatible providers (Groq, Mistral, etc.) inherit embeddings and tool calling via the OpenAI API format.
 
 ## Error Handling
 
-llmgate raises standard exceptions you can catch:
+llmgate provides typed exceptions for common failure modes:
 
 ```python
-import httpx
-from llmgate import LLMGate
+from llmgate import LLMGate, AuthError, RateLimitError, ProviderAPIError
 
 gate = LLMGate()
 
 try:
     response = gate.chat("Hello")
 except FileNotFoundError:
-    # llmgate.yaml not found
     print("Create a llmgate.yaml config file first")
+except AuthError as e:
+    print(f"Bad API key for {e.provider}")
+except RateLimitError as e:
+    print(f"Rate limited by {e.provider} — back off and retry")
+except ProviderAPIError as e:
+    print(f"{e.provider} returned HTTP {e.status_code}")
 except ValueError as e:
-    # Bad config: unknown provider, missing profile, missing 'provider' field
     print(f"Config error: {e}")
-except httpx.HTTPStatusError as e:
-    # API returned an error (401 unauthorized, 429 rate limited, 500 server error, etc.)
-    print(f"API error {e.response.status_code}: {e.response.text}")
-except httpx.ConnectError:
-    # Can't reach the API (network issue, wrong base_url, Ollama not running)
-    print("Connection failed — check your network or base_url")
-except httpx.TimeoutException:
-    # Request took longer than 60 seconds
-    print("Request timed out")
-except ImportError as e:
-    # Missing optional dependency (boto3 for Bedrock, google-auth for Vertex)
-    print(f"Missing dependency: {e}")
 ```
 
-All API errors come through as `httpx.HTTPStatusError` with the full response body available at `e.response.text` — useful for debugging rate limits, auth issues, or quota problems.
+Full exception hierarchy:
+
+| Exception | When |
+|---|---|
+| `AuthError` | 401/403 — bad or missing API key |
+| `RateLimitError` | 429 — rate or quota exceeded |
+| `ProviderAPIError` | Other HTTP errors from the provider |
+| `ModelNotFoundError` | Unknown model or provider |
+| `EmbeddingsNotSupported` | Provider doesn't offer embeddings |
+
+All inherit from `LLMGateError` for catch-all handling.
+
+## LLMResponse
+
+```python
+response = gate.chat("Hello")
+response.text           # str — the generated text
+response.model          # str — model name
+response.provider       # str — provider name
+response.tokens_used    # int | None — total tokens
+response.finish_reason  # str | None — stop reason
+response.tool_calls     # list[ToolCall] — tool/function calls
+response.parsed         # BaseModel | None — structured output
+response.raw            # dict — full API response
+```
 
 ## Azure OpenAI Setup
 
@@ -290,22 +413,6 @@ profiles:
 
 Uses Google Application Default Credentials. Run `gcloud auth application-default login` or set `GOOGLE_APPLICATION_CREDENTIALS`.
 
-## LLMResponse
-
-```python
-response = gate.chat("Hello")
-response.text           # str — the generated text
-response.model          # str — model name
-response.provider       # str — provider name
-response.tokens_used    # int | None — total tokens
-response.finish_reason  # str | None — stop reason
-response.raw            # dict — full API response
-```
-
-## Async Support
-
-Not yet — llmgate v0.1 is sync-only (`httpx` sync client). Async via `httpx.AsyncClient` is planned for v0.2. If this is blocking you, open an issue.
-
 ## Contributing
 
 ```bash
@@ -315,7 +422,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The codebase is intentionally simple. Provider files live in `llmgate/providers/`. OpenAI-compatible providers inherit from `OpenAIProvider` and only override `BASE_URL` + headers. Custom providers implement `send()` and `stream()` directly.
+The codebase is intentionally simple. Provider files live in `llmgate/providers/`. OpenAI-compatible providers inherit from `OpenAIProvider` and only override `BASE_URL` + headers. Custom providers implement `send()`, `stream()`, `asend()`, and `astream()` directly.
 
 To add a new provider:
 1. Create `llmgate/providers/yourprovider.py` — inherit from `BaseProvider` (or `OpenAIProvider` if compatible)
